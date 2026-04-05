@@ -2,6 +2,10 @@
 
 Projeto voltado a coleta, armazenamento e processamento de dados de Formula 1 para suporte a analises e modelos preditivos.
 
+## Arquitetura inicial do projeto
+
+<img src="./image/f1-project.png" alt="Arquitetura do projeto F1">
+
 ## Visao geral
 
 Este repositório organiza a base de um pipeline de dados para Formula 1, cobrindo desde a coleta historica ate a disponibilizacao dos dados para consumo analitico e modelagem.
@@ -42,6 +46,4 @@ Os modelos serao treinados e comparados localmente, com uso do MLflow hospedado 
 
 Com o modelo treinado, a etapa final consiste em uma aplicacao para exibicao das predicoes a usuarios interessados em Formula 1.
 
-## Estrutura inicial
 
-<img src="./image/f1-project.png" alt="Arquitetura do projeto F1">
