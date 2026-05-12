@@ -1,10 +1,29 @@
 # %%
+import mlflow
+
 import gc
 import pandas as pd 
 from sklearn import model_selection
 from sklearn import ensemble
 from sklearn import metrics
+from sklearn import pipeline
 from feature_engine import imputation
+import matplotlib.pyplot as plt 
+import os
+import dotenv
+
+dotenv.load_dotenv()
+
+# %% 
+
+MLFLOW_URI = os.getenv("MLFLOW_URI")
+mlflow.set_tracking_uri(MLFLOW_URI)
+
+# %% 
+mlflow.set_experiment(experiment_id=1)
+
+# %% 
+
 
 # %%
 df = pd.read_csv("../data/abt_f1_drivers_champions.csv", sep=";")
@@ -33,8 +52,7 @@ df_year_round[['row_number', 'year', 'dt_ref']]
 df_year_round = df_year_round[df_year_round['row_number'] > 4]
 df_year_round = df_year_round.drop('row_number', axis=1)
 
-del df 
-gc.collect()
+
 # %%
 
 df_driver_year = df_analytics[["driverid", "year", "f1champions"]].drop_duplicates()
@@ -77,7 +95,6 @@ missing = imputation.ArbitraryNumberImputer(
     variables=x_train.columns.tolist()
 )
 
-x_train_transform = missing.fit_transform(x_train)
 
 # %%
 
@@ -88,62 +105,56 @@ clf = ensemble.RandomForestClassifier(
     n_jobs=4
 )
 
-clf.fit(x_train_transform, y_train)
-
+model = pipeline.Pipeline(steps=[
+    ('Imputation', missing),
+    ('RandomForest', clf)
+])
 # %%
-## Curva roc de treino
+with mlflow.start_run():
 
-y_train_pred = clf.predict(x_train_transform)
-y_train_proba = clf.predict_proba(x_train_transform)[:,1]
-auc_train = metrics.roc_auc_score(y_train, y_train_proba)
-roc_train = metrics.roc_curve(y_train, y_train_proba)
-print(f"AUC Train: ", auc_train)
+    model.fit(x_train, y_train)
 
-# %%
-## Curva roc de test
+    y_train_pred = model.predict(x_train)
+    y_train_proba = model.predict_proba(x_train)[:,1]
+    ## Curva roc de treino
+    auc_train = metrics.roc_auc_score(y_train, y_train_proba)
+    roc_train = metrics.roc_curve(y_train, y_train_proba)
 
-x_test_transform = missing.fit_transform(x_test)
-y_test_pred = clf.predict(x_test_transform)
-y_test_proba = clf.predict_proba(x_test_transform)[:,1]
-auc_test = metrics.roc_auc_score(y_test, y_test_proba)
-roc_test = metrics.roc_curve(y_test, y_test_proba)
-print(f"AUC Test: ", auc_test)
+    mlflow.log_metric("AUC train", auc_train)
+    # mlflow.log_metric("ROC train", roc_train)
 
+    y_test_pred = model.predict(x_test)
+    y_test_proba = model.predict_proba(x_test)[:,1]
+    ## Curva roc de test
+    auc_test = metrics.roc_auc_score(y_test, y_test_proba)
+    roc_test = metrics.roc_curve(y_test, y_test_proba)
 
-# %%
-## Curva roc de oot
+    mlflow.log_metric("AUC test", auc_test)
+    # mlflow.log_metric("ROC test", roc_test)
 
-x_oot_transform = missing.fit_transform(x_oot)
-y_oot_pred = clf.predict(x_oot_transform)
-y_oot_proba = clf.predict_proba(x_oot_transform)[:,1]
-auc_oot = metrics.roc_auc_score(y_oot, y_oot_proba)
-roc_oot = metrics.roc_curve(y_oot, y_oot_proba)
-print(f"AUC OOT: ", auc_oot)
+    y_oot_pred = model.predict(x_oot)
+    y_oot_proba = model.predict_proba(x_oot)[:,1]
+    auc_oot = metrics.roc_auc_score(y_oot, y_oot_proba)
+    roc_oot = metrics.roc_curve(y_oot, y_oot_proba)
+    ## Curva roc de OOT
+    mlflow.log_metric("AUC OOT", auc_oot)
+    # mlflow.log_metric("ROC OOT", roc_oot)
 
-# %%
+    plt.figure(dpi=200)
+    plt.plot(roc_train[0], roc_train[1])
+    plt.plot(roc_test[0], roc_test[1])
+    plt.plot(roc_oot[0], roc_oot[1])
+    plt.legend([f"Treino: {auc_train:.4f}", f"Test: {auc_test:.4f}", f"OOT: {auc_oot:.4f}", ])
+    plt.grid(True)
+    plt.title("Curva ROC")
+    plt.savefig("../data/roc_curve.png")
+    mlflow.log_artifact("../data/roc_curve.png")
 
-import matplotlib.pyplot as plt 
+    feature_importances =  pd.Series(clf.feature_importances_, index=x_train.columns)
+    feature_importances = feature_importances.sort_values(ascending=False)
+    feature_importances.to_markdown("../data/feature_importance.md")
+    mlflow.log_artifact("../data/feature_importance.md")
 
-plt.plot(roc_train[0], roc_train[1])
-plt.plot(roc_test[0], roc_test[1])
-plt.plot(roc_oot[0], roc_oot[1])
-plt.legend([f"Treino: {auc_train:.4f}", f"Test: {auc_test:.4f}", f"OOT: {auc_oot:.4f}", ])
-plt.grid(True)
-plt.title("Curva ROC")
-
-# %%
-
-feature_importances =  pd.Series(clf.feature_importances_, index=x_train_transform.columns)
-feature_importances = feature_importances.sort_values(ascending=False)
-feature_importances.head(20)
-# %%
-
-df_oot['pred'] = y_oot_proba
-
-pd.set_option('display.max_columns', None)
-
-df_oot[['driverid', 'dt_ref', 'f1champions', 'pred']].sort_values(['dt_ref', 'pred'], ascending = False)
-# %%
-df_oot[['driverid', 'dt_ref', 'f1champions', 'pred']].sort_values(['dt_ref', 'pred'], ascending = False).to_csv("../data/champions_2025.csv", sep=";")
-
+    model.fit(df[features], df["f1champions"])
+    mlflow.sklearn.log_model(model, "model")
 # %%
