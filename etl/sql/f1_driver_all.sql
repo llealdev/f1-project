@@ -1,4 +1,5 @@
 SELECT
+	tb_life.dt_ref || '_' || tb_life.driverid AS id,
 	tb_life.dt_ref,
 	tb_life.driverid,
 	tb_life.qtde_pole_win_sprint AS qtde_pole_win_sprint_life,
