@@ -22,7 +22,9 @@ async def health_check():
     return {"message": "Ok"}
 
 @app.post("/predict/")
-async def predict(data: dict): 
+async def predict(payload: dict): 
+
+    data = payload.get('values', [])
     
     if len(data) == 0:
         raise HTTPException(
@@ -30,16 +32,14 @@ async def predict(data: dict):
             detail="No features provided"
         ) 
 
-    df = pd.DataFrame(data["data"]) 
+    df = pd.DataFrame(data) 
     X = df[MODEL.feature_names_in_]
 
-    proba = MODEL.predict_proba(X)[:, 1]
+    df_proba = pd.DataFrame(MODEL.predict_proba(X), columns=MODEL.classes_)
+    df_proba['id'] = df['id'].copy()
 
-    payload_df = pd.DataFrame({
-        "id": df["id"],
-        "proba": proba
-    })
+    df_proba.set_index('id', inplace=True)
 
-    payload = payload_df.to_dict(orient='records')
+    final_payload = df_proba.to_dict(orient='index')
 
-    return {"predictions": payload}
+    return {"predictions": final_payload}
