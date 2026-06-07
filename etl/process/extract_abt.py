@@ -30,7 +30,7 @@ FROM
 	LEFT JOIN f1_champions AS champions ON driver_all.driverid = champions.DriverId
 	AND EXTRACT(YEAR FROM driver_all.dt_ref) = champions.YEAR
 WHERE 
-	driver_all.dt_ref BETWEEN '2000-01-01' AND '2025-12-31'
+	driver_all.dt_ref BETWEEN '2000-01-01' AND '2026-12-31'
 """
 
 # %%

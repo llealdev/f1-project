@@ -8,3 +8,7 @@ pyarrow==23.0.1
 scikit-learn==1.8.0
 scipy==1.17.1
 python-dotenv==1.2.2
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+psycopg[binary]==3.2.3
+SQLAlchemy==2.0.36

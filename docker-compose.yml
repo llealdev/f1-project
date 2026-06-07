@@ -1,0 +1,63 @@
+services:
+  mlflow:
+    build:
+      context: ./mlflow-server
+      dockerfile: Dockerfile
+    container_name: f1_mlflow
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:////app/mlflow/mlflow.db
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/app/mlflow/mlartifacts
+    volumes:
+      - ./mlartifacts:/app/mlflow/mlartifacts
+      - ./mlflow.db:/app/mlflow/mlflow.db
+    ports:
+      - "5000:5000"
+    networks:
+      - postgres-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  f1_api:
+    build:
+      context: ./ml_champion
+      dockerfile: Dockerfile
+    container_name: f1_api_champion
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_URI=http://mlflow:5000
+      - DB_FETURE_STORE=${DB_FETURE_STORE}
+    volumes:
+      - ./ml_champion:/app
+      - ./mlartifacts:/app/mlflow/mlartifacts
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - postgres-network
+    restart: unless-stopped
+
+  f1_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: f1_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - f1_api
+    networks:
+      - postgres-network
+    restart: unless-stopped
+
+networks:
+  postgres-network:
+    name: postgres-container_default
+    external: true

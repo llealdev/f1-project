@@ -1,6 +1,6 @@
 # %%
 import mlflow
-
+import numpy as np
 import gc
 import pandas as pd 
 from sklearn import model_selection
@@ -21,11 +21,8 @@ mlflow.set_tracking_uri(MLFLOW_URI)
 
 # %% 
 mlflow.set_experiment(experiment_id=1)
-
-# %% 
-
-
 # %%
+
 df = pd.read_csv("../data/abt_f1_drivers_champions.csv", sep=";")
 # %%
 
@@ -157,4 +154,3 @@ with mlflow.start_run():
 
     model.fit(df[features], df["f1champions"])
     mlflow.sklearn.log_model(model, "model")
-# %%

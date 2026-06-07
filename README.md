@@ -46,4 +46,23 @@ Os modelos serao treinados e comparados localmente, com uso do MLflow hospedado 
 
 Com o modelo treinado, a etapa final consiste em uma aplicacao para exibicao das predicoes a usuarios interessados em Formula 1.
 
+> **Nota:** o front-end em `frontend/` (React + Vite + Tailwind) foi gerado com o aux\u00edlio de IA (opencode / MiniMax-M3) a partir do brief do projeto, e refinado para se integrar \u00e0 API FastAPI e ao MLflow descritos acima.
+
+## Como rodar com Docker
+
+O `docker-compose.yml` na raiz sobe tr\u00eas servi\u00e7os ligados \u00e0 rede `postgres-container_default` (onde j\u00e1 roda o Postgres `meu_postgres`):
+
+| Servi\u00e7o     | Porta | Descri\u00e7\u00e3o                                       |
+| -------------- | ----- | --------------------------------------------------------- |
+| `mlflow`       | 5000  | Tracking server + UI do MLflow. Re-registra o modelo.    |
+| `f1_api`       | 8000  | FastAPI que carrega o modelo do MLflow e prediz.          |
+| `f1_frontend`  | 3000  | Frontend React servido por nginx (proxy `/api` \u2192 API). |
+
+```bash
+docker compose up -d --build
+# Frontend: http://localhost:3000
+# API:      http://localhost:8000/docs
+# MLflow:   http://localhost:5000
+```
+
 
